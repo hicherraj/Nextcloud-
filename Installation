@@ -1,0 +1,125 @@
+Youtube:
+	https://www.youtube.com/c/TechGuides/videos 
+	https://techguides.yt/guides/how-to-install-and-configure-nextcloud-hub-21/
+
+Install Apache & MySQL
+-------------------------------------------
+sudo apt update
+sudo apt install apache2
+sudo apt install mysql-server
+
+
+Secure MySQL Database
+-------------------------------------------
+sudo mysql_secure_installation
+VALIDATE PASSWORD COMPONENT: n
+New root passwort: <YOUR MYSQL PASSWORD>
+Re-enter new password: <YOUR MYSQL PASSWORD>
+Remove anonymous user: y
+Disallow root login remotely: y
+Remove test database and access to it: y
+Reload privileges tables now: y
+
+Prepare MySQL database
+----------------------------------------------------------------------
+sudo mysql -u root -p
+<ENTER YOUR MYSQL PASSWORD>
+mysql> create database nextcloud;
+mysql> create user 'nextcloud'@'localhost' identified by 'PASSWORD';
+mysql> grant all privileges on nextcloud.* to 'nextcloud'@'localhost';
+mysql> flush privileges;
+mysql> quit
+
+Install PHP for Nextcloud
+-----------------------------------------------------------------------
+sudo apt install php7.4
+sudo apt install php7.4-gd php7.4-mysql php7.4-curl php7.4-mbstring
+sudo apt install php7.4-intl php7.4-gmp php7.4-bcmath php7.4-xml
+sudo apt install libapache2-mod-php7.4 php7.4-zip php-imagick php-apcu
+
+Download Nextcloud Hub 21
+    Go to https://nextcloud.com
+    Click on “Get Nextcloud”
+    Click on “Server packages”
+    Right-click on “Download Nextcloud”
+    Click on “Copy link address”
+----------------------------------------------------------------------
+wget https://download.nextcloud.com/server/releases/nextcloud-21.0.0.zip
+sudo unzip nextcloud-21.0.0.zip -d /var/www
+cd /var/www
+sudo chown -R www-data:www-data nextcloud/
+
+Configure Apache for Nextcloud
+----------------------------------------------------------------------
+sudo a2enmod headers env dir mime rewrite
+sudo service apache2 restart
+
+/etc/apache2/sites-available/000-default.conf
+<VirtualHost *:80>
+
+    ServerName cloud.yourdomain.com
+    DocumentRoot /var/www/nextcloud
+
+    <Directory /var/www/nextcloud/>
+        Require all granted
+        AllowOverride All
+        Options FollowSymLinks MultiViews
+
+        <IfModule mod_dav.c>
+            Dav off
+        </IfModule>
+
+        RewriteEngine On
+        RewriteRule ^/\.well-known/carddav https://%{SERVER_NAME}/remote.php/dav/ [R=301,L]
+        RewriteRule ^/\.well-known/caldav https://%{SERVER_NAME}/remote.php/dav/ [R=301,L]
+        RewriteRule ^/\.well-known/host-meta https://%{SERVER_NAME}/public.php?service=host-meta [QSA,L]
+        RewriteRule ^/\.well-known/host-meta\.json https://%{SERVER_NAME}/public.php?service=host-meta-json [QSA,L]
+        RewriteRule ^/\.well-known/webfinger https://%{SERVER_NAME}/public.php?service=webfinger [QSA,L]
+
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+</VirtualHost>
+
+sudo service apache2 restart
+
+/var/www/nextcloud/config/config.php
+'trusted_domains' => 
+array(
+  0 => 192.168.1.50:80
+  1 => http://yourdomain.com
+),
+
+--------------------------------------------------------------------------------------
+
+Fixing Installation Issues
+-----------------------------------------------------------------------------------
+Click on settings and then on “Overview” to see on-going issues with your Nextcloud installation. It is completely normal for a new installation to produce a few errors, so here is how you can fix the most common issues
+Update PHP Configuration
+
+memory_limit = 1024M
+
+Set up Cronjob for Nextcloud
+---------------------------------------------------------------------------
+sudo crontab -u www-data -e
+
+*/5  *  *  *  * php -f /var/www/nextcloud/cron.php
+
+No default phone region set
+------------------------------------------------------------------------
+/var/www/nextcloud/config/config.php
+'default_phone_region' => 'DE',
+
+No memory cache has been configured
+------------------------------------------------------------------------
+/var/www/nextcloud/config/config.php
+'memcache.local' => '\OC\Memcache\APCu',
+
+Fix php-imagick warning
+----------------------------------------------------------------------------
+sudo apt remove imagemagick-6-common php-imagick
+sudo apt autoremove
+
+sudo apt install imagemagick php-imagick
