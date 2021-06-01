@@ -85,6 +85,8 @@ sudo service apache2 restart
 
 sudo service apache2 restart
 
+http://yourdomain
+
 /var/www/nextcloud/config/config.php
 'trusted_domains' => 
 array(
@@ -99,7 +101,12 @@ Fixing Installation Issues
 Click on settings and then on “Overview” to see on-going issues with your Nextcloud installation. It is completely normal for a new installation to produce a few errors, so here is how you can fix the most common issues
 Update PHP Configuration
 
+nano /etc/php/7.4/apache2/php.ini
 memory_limit = 1024M
+upload_max_filessize = 16G
+post_max_size = 16G
+date.timezone = Europe/Berlin
+
 
 Set up Cronjob for Nextcloud
 ---------------------------------------------------------------------------
